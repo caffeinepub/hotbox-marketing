@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cabinet Grotesk – display */
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Satoshi – body */
+@font-face {
+  font-family: "Satoshi";
+  src: url("/assets/fonts/Satoshi-Variable.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    /* HotBox Marketing — dark "war room" theme */
+    --radius: 0.5rem;
+
+    /* Core palette — deep slate with fire-orange accent */
+    --background: 0.14 0.008 260;
+    --foreground: 0.94 0.008 260;
+    --card: 0.18 0.01 260;
+    --card-foreground: 0.94 0.008 260;
+    --popover: 0.2 0.012 260;
+    --popover-foreground: 0.94 0.008 260;
+
+    /* Primary = fire orange */
+    --primary: 0.68 0.22 38;
+    --primary-foreground: 0.98 0 0;
+
+    --secondary: 0.24 0.012 260;
+    --secondary-foreground: 0.88 0.008 260;
+
+    --muted: 0.22 0.01 260;
+    --muted-foreground: 0.6 0.01 260;
+
+    --accent: 0.26 0.015 260;
+    --accent-foreground: 0.94 0.008 260;
+
+    --destructive: 0.62 0.22 22;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.28 0.01 260;
+    --input: 0.26 0.012 260;
+    --ring: 0.68 0.22 38;
+
+    /* Status colors */
+    --status-interested: 0.72 0.18 142;
+    --status-callback: 0.65 0.18 230;
+    --status-no-answer: 0.55 0.01 260;
+    --status-not-interested: 0.62 0.22 22;
+    --status-voicemail: 0.75 0.18 75;
+
+    --chart-1: 0.68 0.22 38;
+    --chart-2: 0.72 0.18 142;
+    --chart-3: 0.65 0.18 230;
+    --chart-4: 0.75 0.18 75;
+    --chart-5: 0.62 0.22 22;
+
+    --sidebar: 0.16 0.009 260;
+    --sidebar-foreground: 0.94 0.008 260;
+    --sidebar-primary: 0.68 0.22 38;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.22 0.01 260;
+    --sidebar-accent-foreground: 0.94 0.008 260;
+    --sidebar-border: 0.28 0.01 260;
+    --sidebar-ring: 0.68 0.22 38;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-size: 15px;
+  }
+}
