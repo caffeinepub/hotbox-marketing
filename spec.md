@@ -1,33 +1,42 @@
-# HotBox Marketing
+# HotBox Vault
 
 ## Current State
-- Three-tab app: Cold Calls, Scripts
-- Header shows "HotBox Marketing" with subtitle "Cold Call Tracker"
-- Cold Calls tab: log, edit, delete calls with status tracking and stats
-- Scripts tab: create/edit/delete scripts organized by category (category filter pills)
-- Backend: Motoko actor with Script CRUD; cold calls stored in frontend localStorage via useColdCalls hook
+- Three main tabs: Cold Calls, Scripts, Future Clients
+- Cold Calls tab: shows a stats section, a filterable table of calls, and an inline "Future Clients" section below
+- Cold call entries stored in localStorage via `useColdCalls` hook; statuses include voicemail, noAnswer, callback, notInterested, interested
+- Future Clients / Clients tab: group-based system with collapsible group panels, each group has a list of clients with name/company/phone/email/notes
+- Scripts tab: card grid of call scripts with category filtering
+- No "Purchased" call status; no dedicated "Clients" tab (the existing "Future Clients" tab serves a different purpose)
+- No hosting checkbox on any client record
 
 ## Requested Changes (Diff)
 
 ### Add
-- New "Clients" tab (third tab, alongside Cold Calls and Scripts)
-- Backend: ClientGroup entity with id, name, description (optional), createdAt
-- Backend: Client entity with id, groupId, name, company (optional), phone (optional), email (optional), notes (optional), createdAt
-- Backend CRUD: addClientGroup, getClientGroups, updateClientGroup, deleteClientGroup
-- Backend CRUD: addClient, getClients, getClientsByGroup, updateClient, deleteClient
-- Frontend Clients section:
-  - List of collapsible groups, each with a header (group name + optional description) and a list of client entries inside
-  - Each group can be expanded/collapsed (accordion-style)
-  - Add Group button (header CTA when on Clients tab)
-  - Inside each group: list of clients with name, company, phone, email, notes; edit and delete per client
-  - Add Client button inside each group
-  - Edit and delete for groups
-  - Empty state when no groups exist
+- New `purchased` value to `CallStatus` enum in `useColdCalls.ts`
+- Status config entry for "Purchased" (distinct color, e.g. purple/violet)
+- "Purchased" section below the calls table in the Cold Calls tab — shows all cold call entries where status === purchased, in a styled list/table with all their fields
+- New "Clients" main nav tab (separate from "Future Clients")
+- Clients tab shows all purchased cold calls, each rendered as a card/row with: contact name, company, phone, call date, notes — plus a checkbox labeled "Hosting?" on the far right
+- Hosting checkbox state stored in localStorage (a separate map of callId -> boolean)
+- When a cold call is marked as "Purchased" (or edited to Purchased), it automatically appears in both the Purchased section and the Clients tab
 
 ### Modify
-- Header subtitle "Cold Call Tracker" -> remove entirely (no subtitle shown)
-- Main tab state type extended to include "clients"
-- Header CTA dynamically shows the right action button per active tab (Log Call / New Script / Add Group)
+- `CallStatus` enum: add `purchased = "purchased"`
+- `STATUS_CONFIG`: add purchased entry
+- `STATUS_ORDER`: add purchased to the filter list
+- Main tab state type: extend to include `"new_clients"` (or a new tab value like `"purchased_clients"`)
+- Header CTA: no special action needed on the new Clients tab (or show nothing/a note)
+- Cold Calls tab: add "Purchased" section below the calls table (and above or below Future Clients)
+- Stats grid: optionally add a "Purchased" count card
 
 ### Remove
-- The "Cold Call Tracker" subtitle text under "HotBox Marketing" in the header
+- Nothing removed
+
+## Implementation Plan
+1. Add `purchased` to `CallStatus` enum and update STATUS_CONFIG + STATUS_ORDER in App.tsx and useColdCalls.ts
+2. Add a `useHostingState` hook (localStorage) to track hosting checkbox per cold call ID
+3. In the Cold Calls tab, add a "Purchased" section below the calls table that filters entries by `status === purchased` and renders them in a table/list
+4. Add a new "Clients" tab to the main nav (value: `"purchased_clients"`)
+5. Build a `ClientsTab` component that reads all cold call entries filtered to purchased, renders each row with all info fields + a "Hosting?" checkbox on the far right wired to `useHostingState`
+6. Update the header CTA to handle the new tab (no button, or neutral state)
+7. Validate and deploy

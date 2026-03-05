@@ -6,9 +6,9 @@ import Nat64 "mo:core/Nat64";
 import Runtime "mo:core/Runtime";
 import Order "mo:core/Order";
 import Text "mo:core/Text";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // Script Types and Logic
   type ScriptId = Nat64;

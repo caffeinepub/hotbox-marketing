@@ -6,6 +6,7 @@ export enum CallStatus {
   callback = "callback",
   notInterested = "notInterested",
   interested = "interested",
+  purchased = "purchased",
 }
 
 export interface ColdCallEntry {

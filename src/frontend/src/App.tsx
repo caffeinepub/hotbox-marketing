@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -45,16 +46,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  BadgeCheck,
   ChevronDown,
   ChevronRight,
   FileText,
-  Flame,
   Loader2,
   Mail,
   Pencil,
   Phone,
   Plus,
   Trash2,
+  UserCheck,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -77,6 +79,7 @@ import {
   type ColdCallEntryInput,
   useColdCalls,
 } from "./hooks/useColdCalls";
+import { useHostingState } from "./hooks/useHostingState";
 import {
   useAddClient,
   useAddClientGroup,
@@ -127,6 +130,12 @@ const STATUS_CONFIG: Record<
     bg: "bg-amber-950/60 border border-amber-700/40",
     dot: "bg-amber-400",
   },
+  [CallStatus.purchased]: {
+    label: "Purchased",
+    color: "text-violet-300",
+    bg: "bg-violet-950/60 border border-violet-700/40",
+    dot: "bg-violet-500",
+  },
 };
 
 const STATUS_ORDER: CallStatus[] = [
@@ -135,6 +144,7 @@ const STATUS_ORDER: CallStatus[] = [
   CallStatus.noAnswer,
   CallStatus.notInterested,
   CallStatus.voicemail,
+  CallStatus.purchased,
 ];
 
 // ── Status Badge ───────────────────────────────────────────────────────────
@@ -581,14 +591,16 @@ function ScriptFormDialog({
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
-  const [mainTab, setMainTab] = useState<"calls" | "scripts" | "clients">(
-    "calls",
-  );
+  const [mainTab, setMainTab] = useState<
+    "calls" | "scripts" | "future_clients" | "purchased_clients"
+  >("calls");
   const [callsFormOpen, setCallsFormOpen] = useState(false);
   const [scriptsFormOpen, setScriptsFormOpen] = useState(false);
   const [clientsGroupFormOpen, setClientsGroupFormOpen] = useState(false);
   const [inlineClientsGroupFormOpen, setInlineClientsGroupFormOpen] =
     useState(false);
+
+  const { entries, addEntry, updateEntry, deleteEntry } = useColdCalls();
 
   return (
     <TooltipProvider>
@@ -602,12 +614,14 @@ export default function App() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center">
-                <Flame className="w-4 h-4 text-primary" />
-              </div>
+              <img
+                src="/assets/generated/hotbox-vault-logo-transparent.dim_200x200.png"
+                alt="HotBox Vault Logo"
+                className="w-10 h-10 object-contain"
+              />
               <div>
                 <h1 className="font-display text-lg font-extrabold tracking-tight text-foreground leading-none">
-                  HotBox Marketing
+                  HotBox Vault
                 </h1>
               </div>
             </div>
@@ -630,9 +644,9 @@ export default function App() {
                 <Plus className="w-4 h-4" />
                 New Script
               </Button>
-            ) : (
+            ) : mainTab === "purchased_clients" ? null : (
               <Button
-                data-ocid="clients.add_button"
+                data-ocid="future_clients.add_button"
                 onClick={() => setClientsGroupFormOpen(true)}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2"
               >
@@ -648,7 +662,13 @@ export default function App() {
           <Tabs
             value={mainTab}
             onValueChange={(v) =>
-              setMainTab(v as "calls" | "scripts" | "clients")
+              setMainTab(
+                v as
+                  | "calls"
+                  | "scripts"
+                  | "future_clients"
+                  | "purchased_clients",
+              )
             }
           >
             <TabsList className="bg-card border border-border p-1 h-auto mb-0 w-fit">
@@ -669,17 +689,29 @@ export default function App() {
                 Scripts
               </TabsTrigger>
               <TabsTrigger
-                value="clients"
-                data-ocid="clients.tab"
+                value="future_clients"
+                data-ocid="future_clients.tab"
                 className="gap-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-5 py-2"
               >
                 <Users className="w-4 h-4" />
                 Future Clients
               </TabsTrigger>
+              <TabsTrigger
+                value="purchased_clients"
+                data-ocid="purchased_clients.tab"
+                className="gap-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-5 py-2"
+              >
+                <UserCheck className="w-4 h-4" />
+                Clients
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="calls" className="mt-6 space-y-10">
               <CallsSectionWithExternalTrigger
+                entries={entries}
+                addEntry={addEntry}
+                updateEntry={updateEntry}
+                deleteEntry={deleteEntry}
                 externalFormOpen={callsFormOpen}
                 onExternalFormOpenChange={(v) => {
                   setCallsFormOpen(v);
@@ -722,7 +754,7 @@ export default function App() {
               />
             </TabsContent>
 
-            <TabsContent value="clients" className="mt-6">
+            <TabsContent value="future_clients" className="mt-6">
               <ClientsSectionWithExternalTrigger
                 externalFormOpen={clientsGroupFormOpen}
                 onExternalFormOpenChange={(v) => {
@@ -730,12 +762,16 @@ export default function App() {
                 }}
               />
             </TabsContent>
+
+            <TabsContent value="purchased_clients" className="mt-6">
+              <PurchasedClientsTab entries={entries} />
+            </TabsContent>
           </Tabs>
         </main>
 
         {/* ── Footer ────────────────────────────────────────────────────── */}
         <footer className="border-t border-border py-5 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} HotBox Marketing. Built with ❤️ using{" "}
+          © {new Date().getFullYear()} HotBox Vault. Built with ❤️ using{" "}
           <a
             href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
               typeof window !== "undefined" ? window.location.hostname : "",
@@ -752,18 +788,177 @@ export default function App() {
   );
 }
 
+// ── Purchased Clients Tab ──────────────────────────────────────────────────
+interface PurchasedClientsTabProps {
+  entries: ColdCallEntry[];
+}
+
+function PurchasedClientsTab({ entries }: PurchasedClientsTabProps) {
+  const { isHosting, toggle } = useHostingState();
+  const purchased = entries.filter((e) => e.status === CallStatus.purchased);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(`${dateStr}T00:00:00`);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  if (purchased.length === 0) {
+    return (
+      <motion.div
+        data-ocid="purchased_clients.empty_state"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card border border-border rounded-xl"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mb-4">
+          <UserCheck className="w-6 h-6 text-violet-400" />
+        </div>
+        <h3 className="font-display font-bold text-lg text-foreground mb-1">
+          No purchased clients yet
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Mark a cold call as{" "}
+          <span className="text-violet-400 font-medium">Purchased</span> to see
+          it here.
+        </p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div
+      data-ocid="purchased_clients.section"
+      className="bg-card border border-border rounded-xl overflow-hidden"
+    >
+      <div className="px-4 sm:px-6 py-4 border-b border-border bg-violet-950/20 flex items-center gap-2">
+        <UserCheck className="w-5 h-5 text-violet-400" />
+        <h2 className="font-display text-base font-bold text-foreground">
+          Clients
+        </h2>
+        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">
+          {purchased.length} {purchased.length === 1 ? "client" : "clients"}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[160px]">
+                Contact
+              </TableHead>
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[160px]">
+                Company
+              </TableHead>
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[140px]">
+                Phone
+              </TableHead>
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[110px]">
+                Date
+              </TableHead>
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                Notes
+              </TableHead>
+              <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[80px] text-center">
+                Hosting?
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <AnimatePresence>
+              {purchased.map((entry, idx) => (
+                <motion.tr
+                  key={entry.id}
+                  data-ocid={`purchased_clients.item.${idx + 1}`}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 6 }}
+                  transition={{ duration: 0.2, delay: idx * 0.03 }}
+                  className="border-border hover:bg-accent/30 transition-colors"
+                >
+                  <TableCell className="font-medium text-foreground py-3">
+                    {entry.contactName}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground py-3">
+                    {entry.company}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <a
+                      href={`tel:${entry.phone}`}
+                      className="text-primary hover:underline font-mono text-sm"
+                    >
+                      {entry.phone}
+                    </a>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground py-3 text-sm">
+                    {formatDate(entry.callDate)}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm text-muted-foreground max-w-[220px]">
+                    {entry.notes ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="line-clamp-1 cursor-default">
+                            {entry.notes}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs bg-popover border-border">
+                          {entry.notes}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-muted-foreground/40 italic text-xs">
+                        —
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <Checkbox
+                        data-ocid={`purchased_clients.checkbox.${idx + 1}`}
+                        checked={isHosting(entry.id)}
+                        onCheckedChange={() => toggle(entry.id)}
+                        className="border-violet-500/50 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                        aria-label={`Hosting for ${entry.contactName}`}
+                      />
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        Hosting?
+                      </span>
+                    </div>
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 // Wrappers that accept external open triggers from the header CTA
 interface WithExternalTriggerProps {
   externalFormOpen: boolean;
   onExternalFormOpenChange: (v: boolean) => void;
 }
 
+interface CallsSectionProps extends WithExternalTriggerProps {
+  entries: ColdCallEntry[];
+  addEntry: (input: ColdCallEntryInput) => ColdCallEntry;
+  updateEntry: (id: string, input: ColdCallEntryInput) => ColdCallEntry;
+  deleteEntry: (id: string) => void;
+}
+
 function CallsSectionWithExternalTrigger({
+  entries,
+  addEntry,
+  updateEntry,
+  deleteEntry,
   externalFormOpen,
   onExternalFormOpenChange,
-}: WithExternalTriggerProps) {
-  const { entries, addEntry, updateEntry, deleteEntry } = useColdCalls();
-
+}: CallsSectionProps) {
   const [editingEntry, setEditingEntry] = useState<ColdCallEntry | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -778,6 +973,7 @@ function CallsSectionWithExternalTrigger({
     notInterested: entries.filter((e) => e.status === CallStatus.notInterested)
       .length,
     voicemail: entries.filter((e) => e.status === CallStatus.voicemail).length,
+    purchased: entries.filter((e) => e.status === CallStatus.purchased).length,
   };
 
   const filtered =
@@ -825,7 +1021,7 @@ function CallsSectionWithExternalTrigger({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"
       >
         <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -865,6 +1061,12 @@ function CallsSectionWithExternalTrigger({
             label: "Voicemail",
             count: stats.voicemail,
             color: "text-amber-400",
+          },
+          {
+            key: "purchased",
+            label: "Purchased",
+            count: stats.purchased,
+            color: "text-violet-400",
           },
         ].map((s) => (
           <div
@@ -1071,6 +1273,115 @@ function CallsSectionWithExternalTrigger({
           </div>
         )}
       </motion.div>
+
+      {/* Purchased Section */}
+      {(() => {
+        const purchasedEntries = entries.filter(
+          (e) => e.status === CallStatus.purchased,
+        );
+        return (
+          <motion.div
+            data-ocid="purchased_clients.section"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <BadgeCheck className="w-5 h-5 text-violet-400" />
+              <h2 className="font-display text-lg font-bold text-foreground">
+                Purchased
+              </h2>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">
+                {purchasedEntries.length}
+              </span>
+            </div>
+
+            {purchasedEntries.length === 0 ? (
+              <div
+                data-ocid="purchased_clients.empty_state"
+                className="bg-card border border-border rounded-xl px-6 py-8 flex items-center gap-3 text-muted-foreground"
+              >
+                <BadgeCheck className="w-4 h-4 text-violet-400/50 shrink-0" />
+                <span className="text-sm italic">
+                  No purchased calls yet — mark a call as Purchased to see it
+                  here.
+                </span>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[160px]">
+                          Contact
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[160px]">
+                          Company
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[140px]">
+                          Phone
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[110px]">
+                          Date
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+                          Notes
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {purchasedEntries.map((entry, idx) => (
+                        <TableRow
+                          key={entry.id}
+                          data-ocid={`purchased_clients.item.${idx + 1}`}
+                          className="border-border hover:bg-accent/30 transition-colors"
+                        >
+                          <TableCell className="font-medium text-foreground py-3">
+                            {entry.contactName}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground py-3">
+                            {entry.company}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <a
+                              href={`tel:${entry.phone}`}
+                              className="text-primary hover:underline font-mono text-sm"
+                            >
+                              {entry.phone}
+                            </a>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground py-3 text-sm">
+                            {formatDate(entry.callDate)}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm text-muted-foreground max-w-[220px]">
+                            {entry.notes ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="line-clamp-1 cursor-default">
+                                    {entry.notes}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs bg-popover border-border">
+                                  {entry.notes}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-muted-foreground/40 italic text-xs">
+                                —
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+      })()}
 
       {/* Call Form */}
       <CallFormDialog
