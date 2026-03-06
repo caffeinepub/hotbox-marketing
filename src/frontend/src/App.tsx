@@ -102,15 +102,15 @@ const STATUS_CONFIG: Record<
 > = {
   [CallStatus.interested]: {
     label: "Interested",
-    color: "text-emerald-300",
-    bg: "bg-emerald-950/60 border border-emerald-700/40",
-    dot: "bg-emerald-400",
-  },
-  [CallStatus.callback]: {
-    label: "Callback",
     color: "text-blue-300",
     bg: "bg-blue-950/60 border border-blue-700/40",
     dot: "bg-blue-400",
+  },
+  [CallStatus.appointments]: {
+    label: "Appointments",
+    color: "text-emerald-300",
+    bg: "bg-emerald-950/60 border border-emerald-700/40",
+    dot: "bg-emerald-400",
   },
   [CallStatus.noAnswer]: {
     label: "No Answer",
@@ -140,7 +140,7 @@ const STATUS_CONFIG: Record<
 
 const STATUS_ORDER: CallStatus[] = [
   CallStatus.interested,
-  CallStatus.callback,
+  CallStatus.appointments,
   CallStatus.noAnswer,
   CallStatus.notInterested,
   CallStatus.voicemail,
@@ -168,6 +168,8 @@ const BLANK_CALL_FORM: ColdCallEntryInput = {
   callDate: new Date().toISOString().split("T")[0],
   status: CallStatus.noAnswer,
   notes: "",
+  appointmentTime: "",
+  meetingLocation: "",
 };
 
 // ── Call Form Dialog ───────────────────────────────────────────────────────
@@ -195,6 +197,8 @@ function CallFormDialog({
           callDate: editingEntry.callDate,
           status: editingEntry.status,
           notes: editingEntry.notes ?? "",
+          appointmentTime: editingEntry.appointmentTime ?? "",
+          meetingLocation: editingEntry.meetingLocation ?? "",
         }
       : BLANK_CALL_FORM,
   );
@@ -211,6 +215,8 @@ function CallFormDialog({
               callDate: editingEntry.callDate,
               status: editingEntry.status,
               notes: editingEntry.notes ?? "",
+              appointmentTime: editingEntry.appointmentTime ?? "",
+              meetingLocation: editingEntry.meetingLocation ?? "",
             }
           : {
               ...BLANK_CALL_FORM,
@@ -228,6 +234,8 @@ function CallFormDialog({
       const input: ColdCallEntryInput = {
         ...form,
         notes: form.notes || undefined,
+        appointmentTime: form.appointmentTime || undefined,
+        meetingLocation: form.meetingLocation || undefined,
       };
       if (editingEntry) {
         onUpdate(editingEntry.id, input);
@@ -369,6 +377,43 @@ function CallFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {form.status === CallStatus.appointments && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cf-appointmentTime"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Appointment Time
+                </Label>
+                <Input
+                  id="cf-appointmentTime"
+                  data-ocid="call_form.appointment_time_input"
+                  type="datetime-local"
+                  value={form.appointmentTime ?? ""}
+                  onChange={(e) => set("appointmentTime", e.target.value)}
+                  className="bg-muted border-border focus-visible:ring-primary"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cf-meetingLocation"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Meeting App / Location
+                </Label>
+                <Input
+                  id="cf-meetingLocation"
+                  data-ocid="call_form.meeting_location_input"
+                  value={form.meetingLocation ?? ""}
+                  onChange={(e) => set("meetingLocation", e.target.value)}
+                  placeholder="e.g. Zoom, Google Meet, Office"
+                  className="bg-muted border-border focus-visible:ring-primary"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label
@@ -968,7 +1013,8 @@ function CallsSectionWithExternalTrigger({
     total: entries.length,
     interested: entries.filter((e) => e.status === CallStatus.interested)
       .length,
-    callback: entries.filter((e) => e.status === CallStatus.callback).length,
+    appointments: entries.filter((e) => e.status === CallStatus.appointments)
+      .length,
     noAnswer: entries.filter((e) => e.status === CallStatus.noAnswer).length,
     notInterested: entries.filter((e) => e.status === CallStatus.notInterested)
       .length,
@@ -1036,13 +1082,13 @@ function CallsSectionWithExternalTrigger({
             key: "interested",
             label: "Interested",
             count: stats.interested,
-            color: "text-emerald-400",
+            color: "text-blue-400",
           },
           {
-            key: "callback",
-            label: "Callback",
-            count: stats.callback,
-            color: "text-blue-400",
+            key: "appointments",
+            label: "Appointments",
+            count: stats.appointments,
+            color: "text-emerald-400",
           },
           {
             key: "noAnswer",
@@ -1173,7 +1219,7 @@ function CallsSectionWithExternalTrigger({
                     Status
                   </TableHead>
                   <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                    Notes
+                    Notes / Appointment
                   </TableHead>
                   <TableHead className="text-muted-foreground text-xs font-semibold uppercase tracking-wider w-[90px] text-right">
                     Actions
@@ -1212,8 +1258,43 @@ function CallsSectionWithExternalTrigger({
                       <TableCell className="py-3">
                         <StatusBadge status={entry.status} />
                       </TableCell>
-                      <TableCell className="py-3 text-sm text-muted-foreground max-w-[220px]">
-                        {entry.notes ? (
+                      <TableCell className="py-3 text-sm text-muted-foreground max-w-[240px]">
+                        {entry.status === CallStatus.appointments &&
+                        (entry.appointmentTime || entry.meetingLocation) ? (
+                          <div className="flex flex-col gap-0.5">
+                            {entry.appointmentTime && (
+                              <span className="text-emerald-400 font-medium text-xs">
+                                {new Date(entry.appointmentTime).toLocaleString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                  },
+                                )}
+                              </span>
+                            )}
+                            {entry.meetingLocation && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                {entry.meetingLocation}
+                              </span>
+                            )}
+                            {entry.notes && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="line-clamp-1 cursor-default text-xs italic">
+                                    {entry.notes}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs bg-popover border-border">
+                                  {entry.notes}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        ) : entry.notes ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="line-clamp-1 cursor-default">

@@ -3,9 +3,9 @@ import { useCallback, useState } from "react";
 export enum CallStatus {
   voicemail = "voicemail",
   noAnswer = "noAnswer",
-  callback = "callback",
-  notInterested = "notInterested",
   interested = "interested",
+  notInterested = "notInterested",
+  appointments = "appointments",
   purchased = "purchased",
 }
 
@@ -18,6 +18,8 @@ export interface ColdCallEntry {
   company: string;
   notes?: string;
   phone: string;
+  appointmentTime?: string;
+  meetingLocation?: string;
 }
 
 export interface ColdCallEntryInput {
@@ -27,6 +29,8 @@ export interface ColdCallEntryInput {
   company: string;
   notes?: string;
   phone: string;
+  appointmentTime?: string;
+  meetingLocation?: string;
 }
 
 const STORAGE_KEY = "hotbox_cold_calls";
