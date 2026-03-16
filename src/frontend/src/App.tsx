@@ -61,7 +61,7 @@ import {
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type {
   Client,
@@ -70,8 +70,6 @@ import type {
   ClientId,
   ClientInput,
   GroupId,
-  Script,
-  ScriptInput,
 } from "./backend.d";
 import {
   CallStatus,
@@ -83,16 +81,12 @@ import { useHostingState } from "./hooks/useHostingState";
 import {
   useAddClient,
   useAddClientGroup,
-  useAddScript,
   useDeleteClient,
   useDeleteClientGroup,
-  useDeleteScript,
   useGetClientGroups,
   useGetClients,
-  useGetScripts,
   useUpdateClient,
   useUpdateClientGroup,
-  useUpdateScript,
 } from "./hooks/useQueries";
 
 // ── Status config ──────────────────────────────────────────────────────────
@@ -203,6 +197,28 @@ function CallFormDialog({
       : BLANK_CALL_FORM,
   );
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        editingEntry
+          ? {
+              contactName: editingEntry.contactName,
+              company: editingEntry.company,
+              phone: editingEntry.phone,
+              callDate: editingEntry.callDate,
+              status: editingEntry.status,
+              notes: editingEntry.notes ?? "",
+              appointmentTime: editingEntry.appointmentTime ?? "",
+              meetingLocation: editingEntry.meetingLocation ?? "",
+            }
+          : {
+              ...BLANK_CALL_FORM,
+              callDate: new Date().toISOString().split("T")[0],
+            },
+      );
+    }
+  }, [open, editingEntry]);
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
@@ -463,184 +479,12 @@ function CallFormDialog({
   );
 }
 
-// ── Script Form Dialog ─────────────────────────────────────────────────────
-interface ScriptFormDialogProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  editingScript: Script | null;
-}
-
-const BLANK_SCRIPT_FORM: ScriptInput = {
-  title: "",
-  content: "",
-  category: "",
-};
-
-function ScriptFormDialog({
-  open,
-  onOpenChange,
-  editingScript,
-}: ScriptFormDialogProps) {
-  const [form, setForm] = useState<ScriptInput>(
-    editingScript
-      ? {
-          title: editingScript.title,
-          content: editingScript.content,
-          category: editingScript.category ?? "",
-        }
-      : BLANK_SCRIPT_FORM,
-  );
-
-  const addScript = useAddScript();
-  const updateScript = useUpdateScript();
-  const isPending = addScript.isPending || updateScript.isPending;
-
-  const handleOpenChange = (v: boolean) => {
-    if (v) {
-      setForm(
-        editingScript
-          ? {
-              title: editingScript.title,
-              content: editingScript.content,
-              category: editingScript.category ?? "",
-            }
-          : { ...BLANK_SCRIPT_FORM },
-      );
-    }
-    onOpenChange(v);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const input: ScriptInput = {
-        title: form.title,
-        content: form.content,
-        category: form.category || undefined,
-      };
-      if (editingScript) {
-        await updateScript.mutateAsync({ id: editingScript.id, input });
-        toast.success("Script updated");
-      } else {
-        await addScript.mutateAsync(input);
-        toast.success("Script saved");
-      }
-      onOpenChange(false);
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    }
-  };
-
-  const set = <K extends keyof ScriptInput>(key: K, val: ScriptInput[K]) =>
-    setForm((prev) => ({ ...prev, [key]: val }));
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        data-ocid="script_form.dialog"
-        className="bg-card border-border text-foreground max-w-2xl"
-      >
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl font-bold">
-            {editingScript ? "Edit Script" : "New Script"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="sf-title"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Title <span className="text-primary">*</span>
-              </Label>
-              <Input
-                id="sf-title"
-                data-ocid="script_form.title_input"
-                required
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="Opening Pitch"
-                className="bg-muted border-border focus-visible:ring-primary"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="sf-category"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Category{" "}
-                <span className="text-muted-foreground text-xs">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                id="sf-category"
-                data-ocid="script_form.category_input"
-                value={form.category ?? ""}
-                onChange={(e) => set("category", e.target.value)}
-                placeholder="e.g. Opener, Objection, Closing"
-                className="bg-muted border-border focus-visible:ring-primary"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="sf-content"
-              className="text-sm font-medium text-muted-foreground"
-            >
-              Script Content <span className="text-primary">*</span>
-            </Label>
-            <Textarea
-              id="sf-content"
-              data-ocid="script_form.content_textarea"
-              required
-              value={form.content}
-              onChange={(e) => set("content", e.target.value)}
-              placeholder="Write your script here…"
-              rows={10}
-              className="bg-muted border-border focus-visible:ring-primary resize-y font-mono text-sm leading-relaxed"
-            />
-          </div>
-
-          <DialogFooter className="pt-2 gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              data-ocid="script_form.cancel_button"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              data-ocid="script_form.submit_button"
-              disabled={isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-            >
-              {isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : null}
-              {editingScript ? "Save Changes" : "Save Script"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
   const [mainTab, setMainTab] = useState<
-    "calls" | "scripts" | "future_clients" | "purchased_clients"
+    "calls" | "future_clients" | "purchased_clients"
   >("calls");
   const [callsFormOpen, setCallsFormOpen] = useState(false);
-  const [scriptsFormOpen, setScriptsFormOpen] = useState(false);
   const [clientsGroupFormOpen, setClientsGroupFormOpen] = useState(false);
   const [inlineClientsGroupFormOpen, setInlineClientsGroupFormOpen] =
     useState(false);
@@ -680,15 +524,6 @@ export default function App() {
                 <Plus className="w-4 h-4" />
                 Log Call
               </Button>
-            ) : mainTab === "scripts" ? (
-              <Button
-                data-ocid="scripts.add_button"
-                onClick={() => setScriptsFormOpen(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                New Script
-              </Button>
             ) : mainTab === "purchased_clients" ? null : (
               <Button
                 data-ocid="future_clients.add_button"
@@ -707,13 +542,7 @@ export default function App() {
           <Tabs
             value={mainTab}
             onValueChange={(v) =>
-              setMainTab(
-                v as
-                  | "calls"
-                  | "scripts"
-                  | "future_clients"
-                  | "purchased_clients",
-              )
+              setMainTab(v as "calls" | "future_clients" | "purchased_clients")
             }
           >
             <TabsList className="bg-card border border-border p-1 h-auto mb-0 w-fit">
@@ -724,14 +553,6 @@ export default function App() {
               >
                 <Phone className="w-4 h-4" />
                 Cold Calls
-              </TabsTrigger>
-              <TabsTrigger
-                value="scripts"
-                data-ocid="scripts.tab"
-                className="gap-2 text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-5 py-2"
-              >
-                <FileText className="w-4 h-4" />
-                Scripts
               </TabsTrigger>
               <TabsTrigger
                 value="future_clients"
@@ -788,15 +609,6 @@ export default function App() {
                   onExternalFormOpenChange={setInlineClientsGroupFormOpen}
                 />
               </div>
-            </TabsContent>
-
-            <TabsContent value="scripts" className="mt-6">
-              <ScriptsSectionWithExternalTrigger
-                externalFormOpen={scriptsFormOpen}
-                onExternalFormOpenChange={(v) => {
-                  setScriptsFormOpen(v);
-                }}
-              />
             </TabsContent>
 
             <TabsContent value="future_clients" className="mt-6">
@@ -1517,265 +1329,6 @@ function CallsSectionWithExternalTrigger({
   );
 }
 
-function ScriptsSectionWithExternalTrigger({
-  externalFormOpen,
-  onExternalFormOpenChange,
-}: WithExternalTriggerProps) {
-  const { data: scripts = [], isLoading } = useGetScripts();
-  const deleteScript = useDeleteScript();
-
-  const [editingScript, setEditingScript] = useState<Script | null>(null);
-  const [deletingId, setDeletingId] = useState<bigint | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-
-  const categories = Array.from(
-    new Set(scripts.map((s) => s.category).filter(Boolean) as string[]),
-  ).sort();
-
-  const filtered =
-    activeCategory === "all"
-      ? scripts
-      : scripts.filter((s) => s.category === activeCategory);
-
-  const sorted = [...filtered].sort((a, b) => {
-    return Number(b.updatedAt) - Number(a.updatedAt);
-  });
-
-  const handleDelete = async () => {
-    if (deletingId === null) return;
-    try {
-      await deleteScript.mutateAsync(deletingId);
-      toast.success("Script deleted");
-    } catch {
-      toast.error("Failed to delete script");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleFormOpenChange = (v: boolean) => {
-    onExternalFormOpenChange(v);
-    if (!v) setEditingScript(null);
-  };
-
-  return (
-    <div data-ocid="scripts.section" className="space-y-6">
-      {/* Category filter pills */}
-      {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider mr-1">
-            Filter:
-          </span>
-          <button
-            type="button"
-            onClick={() => setActiveCategory("all")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeCategory === "all"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            All ({scripts.length})
-          </button>
-          {categories.map((cat) => {
-            const count = scripts.filter((s) => s.category === cat).length;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  activeCategory === cat
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {cat} ({count})
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {isLoading ? (
-        <div
-          data-ocid="scripts.loading_state"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {["sk1", "sk2", "sk3"].map((k) => (
-            <Skeleton key={k} className="h-48 w-full rounded-xl" />
-          ))}
-        </div>
-      ) : sorted.length === 0 ? (
-        <motion.div
-          data-ocid="scripts.empty_state"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card border border-border rounded-xl"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
-            <FileText className="w-6 h-6 text-primary" />
-          </div>
-          <h3 className="font-display font-bold text-lg text-foreground mb-1">
-            {activeCategory === "all"
-              ? "No scripts yet"
-              : `No scripts in "${activeCategory}"`}
-          </h3>
-          <p className="text-sm text-muted-foreground max-w-xs mb-6">
-            {activeCategory === "all"
-              ? "Write your cold call scripts to stay consistent on every call."
-              : "No scripts in this category. Try a different filter."}
-          </p>
-          {activeCategory === "all" && (
-            <Button
-              onClick={() => {
-                setEditingScript(null);
-                onExternalFormOpenChange(true);
-              }}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Write Your First Script
-            </Button>
-          )}
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <AnimatePresence>
-            {sorted.map((script, idx) => (
-              <motion.div
-                key={script.id.toString()}
-                data-ocid={`scripts.item.${idx + 1}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.2, delay: idx * 0.04 }}
-                className="group bg-card border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-primary/40 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-base text-foreground leading-tight truncate">
-                      {script.title}
-                    </h3>
-                    {script.category && (
-                      <Badge
-                        variant="secondary"
-                        className="mt-1.5 text-xs bg-primary/15 text-primary border-primary/20 border"
-                      >
-                        {script.category}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`scripts.edit_button.${idx + 1}`}
-                          onClick={() => {
-                            setEditingScript(script);
-                            onExternalFormOpenChange(true);
-                          }}
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-ocid={`scripts.delete_button.${idx + 1}`}
-                          onClick={() => setDeletingId(script.id)}
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete</TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4 flex-1">
-                  {script.content}
-                </p>
-
-                <div className="pt-1 border-t border-border/50 text-xs text-muted-foreground/60">
-                  Updated{" "}
-                  {new Date(
-                    Number(script.updatedAt) / 1_000_000,
-                  ).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-      )}
-
-      {/* Script Form */}
-      <ScriptFormDialog
-        open={externalFormOpen}
-        onOpenChange={handleFormOpenChange}
-        editingScript={editingScript}
-      />
-
-      {/* Delete confirm */}
-      <AlertDialog
-        open={deletingId !== null}
-        onOpenChange={(v) => !v && setDeletingId(null)}
-      >
-        <AlertDialogContent
-          data-ocid="script_delete_confirm.dialog"
-          className="bg-card border-border text-foreground"
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-lg font-bold">
-              Delete Script?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              This action cannot be undone. The script will be permanently
-              deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              data-ocid="script_delete_confirm.cancel_button"
-              className="bg-muted border-border text-foreground hover:bg-accent"
-              onClick={() => setDeletingId(null)}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              data-ocid="script_delete_confirm.confirm_button"
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
-              disabled={deleteScript.isPending}
-            >
-              {deleteScript.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
 // ── Client Group Form Dialog ───────────────────────────────────────────────
 interface ClientGroupFormDialogProps {
   open: boolean;
@@ -1793,8 +1346,21 @@ function ClientGroupFormDialog({
   const [form, setForm] = useState<ClientGroupInput>(
     editingGroup
       ? { name: editingGroup.name, description: editingGroup.description ?? "" }
-      : BLANK_GROUP_FORM,
+      : { ...BLANK_GROUP_FORM },
   );
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        editingGroup
+          ? {
+              name: editingGroup.name,
+              description: editingGroup.description ?? "",
+            }
+          : { ...BLANK_GROUP_FORM },
+      );
+    }
+  }, [open, editingGroup]);
 
   const addGroup = useAddClientGroup();
   const updateGroup = useUpdateClientGroup();
@@ -1947,6 +1513,22 @@ function ClientFormDialog({
     email: editingClient?.email ?? "",
     notes: editingClient?.notes ?? "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        editingClient
+          ? {
+              name: editingClient.name,
+              company: editingClient.company ?? "",
+              phone: editingClient.phone ?? "",
+              email: editingClient.email ?? "",
+              notes: editingClient.notes ?? "",
+            }
+          : { ...BLANK_CLIENT_FORM },
+      );
+    }
+  }, [open, editingClient]);
 
   const addClient = useAddClient();
   const updateClient = useUpdateClient();

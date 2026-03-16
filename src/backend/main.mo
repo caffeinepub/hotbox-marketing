@@ -9,7 +9,7 @@ import Text "mo:core/Text";
 
 
 
-actor {
+persistent actor {
   // Script Types and Logic
   type ScriptId = Nat64;
   var nextScriptId = 0;
